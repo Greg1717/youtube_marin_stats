@@ -54,7 +54,6 @@ help(dbinom)
 # dbinom is used to find values for the probability density function of X, f(x).
 # P(X=3)
 dbinom(x = 3, size = 20, prob = 1/6)
-dbinom(x = 0:3, size = 20, prob = 1/6)
 
 # same with tigerstats
 tigerstats::pbinomGC(
@@ -94,7 +93,6 @@ rpois() returns a random sample from a Poisson Distribution.
 qpois() returns quantiles for the Poisson Distribution.
 ```{r}
 help("dpois")
-
 # P(X=4)
 dpois(x = 4, lambda = 7)
 
@@ -111,9 +109,9 @@ ppois(q = 12, lambda = 7, lower.tail = F)
 ## 3.3 Normal Distribution
 X is normally distributed with a known mean of 75 and standard deviation of 5.
 X~N(mu=75, var=5^2)
+
 ```{r}
 help("pnorm")
-
 # P(X<=70)
 pnorm(q = 70, mean = 75, sd = 5, lower.tail = T)
 
@@ -168,17 +166,22 @@ help(pt)
 # suppose> t-stat 2.3, df=25
 # find: one-sided p-value
 # P(t>2.3)
-pt(q=2.3, df=25, lower.tail = F)
+pt(q = 2.3, df = 25, lower.tail = F)
 
 # two-sided p-value
-pt(q=2.3, df=25, lower.tail = F) + pt(q=-2.3, df=25, lower.tail = T)
+pt(q = 2.3, 
+   df = 25, 
+   lower.tail = F) +
+        pt(q = -2.3,
+           df = 25,
+           lower.tail = T)
 
-pt(q=2.3, df=25, lower.tail = F)*2
+pt(q = 2.3, df = 25, lower.tail = F) * 2
 
 # 2-sided 95% confidence interval
 # find t for 95% confidence
 # find value of t with 2.5% in each tail
-qt(p = 0.025, df=25, lower.tail = T)
+qt(p = 0.025, df = 25, lower.tail = T)
 
 help(pf)
 help(pexp)
@@ -202,8 +205,6 @@ with(sleep, t.test(extra[group == 1], extra[group == 2]))
 
 ## Formula interface
 t.test(extra ~ group, data = sleep)
-
-
 
 ## Formula interface to one-sample test
 t.test(extra ~ 1, data = sleep)
@@ -306,18 +307,480 @@ leveneTest(LungCap~Smoke)
 # 5 Linear Regression
 ## 5.1 Simple Linear Regression
 ```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+plot(Age, LungCap, main = "Scatterplot")
+cor(Age, LungCap)
+?lm
+mod <- lm(LungCap ~ Age)
+summary(mod)
+attributes(mod)
+mod$coefficients
+coef(mod)
+plot(Age, LungCap, main = "Scatterplot")
+abline(mod)
+abline(mod, col=2, lwd=3)
+coef(mod)
+confint(mod)
+confint(mod, level = 0.99)
+anova(mod)
+```
+
+## lmGC()
+```{r}
+library(tigerstats)
+lmGC(mpg ~ wt, data = mtcars)
+WeightEff <- lmGC(mpg ~ wt, data = mtcars)
+predict(WeightEff, x = 3)
+predict(WeightEff,x=3, level=0.95)
+lmGC(mpg ~ wt, data = mtcars, graph = TRUE)
+plot(WeightEff)
 
 ```
+You get two graphs:
+
+- a density plot of the residuals. If the distribution of the residuals is roughly bell-shaped, then the 68-95 Rule says that: about 68% of the residuals are between −s and s;
+- about 95% of the residuals are between −2s and 2s.
+
+A plot of the residuals vs, the fitted y-values (the y-coordinates of the points on the original scatter-plot). If the points exhibit a linear relationship with about the same amount of scatter all the way along the regression line, then this plot will look like a random cloud of points
+
+If you plan to use your regression line for prediction and to rely upon the prediction standard errors and prediction intervals provided by the predict() function, then the residuals should be roughly bell-shaped, and the plot of residuals vs. fits should look pretty much like a random cloud.
+
+In this case, the plots indicate that we can make reliable predictions from our linear model.
+
+On the other hand, consider fuel data frame, which shows the results of a study where a British Ford Escort was driven at various speed along a standard course, and the fuel efficiency (in kilometers traveled per liter of fuel consumed) was recorded at each speed. Let’s try a linear model with speed as explanatory and efficiency as the response, with some diagnostic plots attached:
+
+```{r}
+effSpeed <- lmGC(efficiency ~ speed, data = fuel)
+plot(effSpeed)
+```
+
+The residuals have a roughly-bell-shaped distribution, but the residual plot is clearly patterned. Something is amiss! Let’s look at a scatter-plot of the data:
+
+```{r}
+xyplot(efficiency~speed,data=fuel,
+        xlab="speed (kilometers/hour",
+        ylab="fuel effiency (liters/100km",
+        pch=19,col="blue",type=c("p","r"),
+        main="Speed and Fuel Efficiency\nfor a British Ford Escort")
+```
+
+The relationship is strongly curvilinear: it makes no sense to use the regression line (shown in the plot above) to study the relationship between these two variables!
+
+Another nice way to check whether your fit is appropriate to the data is to use the check argument for lmGC(). Let’s perform a check on the WeightEff model:
+
+```{r}
+lmGC(mpg ~ wt, data = mtcars, check = TRUE)
+lmGC(volume~avgtemp,data=RailTrail,check=TRUE)
+
+```
+
+
+### Help Examples
+#### lm()
+```{r}
+require(graphics)
+## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
+## Page 9: Plant Weight Data.
+ctl <- c(4.17,5.58,5.18,6.11,4.50,4.61,5.17,4.53,5.33,5.14)
+trt <- c(4.81,4.17,4.41,3.59,5.87,3.83,6.03,4.89,4.32,4.69)
+group <- gl(2, 10, 20, labels = c("Ctl","Trt"))
+weight <- c(ctl, trt)
+lm.D9 <- lm(weight ~ group)
+# lm.D90 <- lm(weight ~ group)
+lm.D90 <- lm(weight ~ group - 1) # omitting intercept
+
+anova(lm.D9)
+summary(lm.D90)
+
+opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
+plot(lm.D9, las = 1)      # Residuals, Fitted, ...
+par(opar)
+```
+
 
 ## 5.2 Checking Linear Regression Assumptions
 ```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+summary(LungCapData)
+attach(LungCapData)
+plot(Age, LungCap, main = "Scatterplot")
+mod <- lm(LungCap ~ Age)
+summary(mod)
+abline(mod) # mean of Y given X
+```
+
+Assumptions: 
+
+- The Y-values (or the errors, "e") are independent.
+- The Y-values can be expressed as a linear function of the X variable.
+- Variation of observations around the regression line (the residual SE) is constant (homoscedasticity).
+- For a given value of X, Y values (or the error) are normally distributed.
+
+
+```{r}
+plot(mod)
+par(mfrow = c(2, 2))
+plot(mod)
+par(mfrow = c(1, 1))
+```
+
+
+## 5.3 Multiple Linear Regression
+
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+# fit a model using Age and Height as X-variables
+model1 <- lm(LungCap ~ Age + Height)
+summary(model1)
+```
+- R-Squared: 84% of variation in Lung Capacity can be explained by our model (Age and Height).
+- F-statistic and p-value represent an overall test of significance
+- P-value tests the Null Hypothesis that all the model coefficients are zero; in the example it tests if the slope for Age and Height are zero.
+- Residual SE gives us an idea of how far observed values are from the predicted values; it gives us an idea of a typical sized residual or error.
+- The estimated intercept is the value of Y when the X values are zero (X may be centered to create a more meaningful intercept).
+- 't value' and 'Pr(>|t|) is the hypothesis test that the slope equals zero.
+```{r}
+cor(Age, Height, method = "pearson")
+confint(model1)
+# fit a model using all X variables
+model2 <- lm(LungCap ~ Age + Height + Smoke + Gender + Caesarean)
+summary(model2)
+# check the regression diagnostic plots for this model
+plot(model2)
+```
+The relationship between the X variables is approximately linear, the variation looks constant. 
+
+## 5.4 Changing Numeric Variable to Categorical in R
+
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+# 
+CatHeight <- cut(Height, 
+                 breaks = c(0, 50, 55, 60, 65, 70, 100), 
+                 labels = c("A", "B", "C", "D", "E", "F"),
+                 right = F)   
+# F = right-open interval [a,b)
+# T = right-closed interval (a, b]
+CatHeight
+# it is possible to define the number of desired break points:
+CatHeight <- cut(Height, 
+                 breaks = 4, 
+                 right = F)
+CatHeight
+```
+
+
+## 5.5 Creating Dummy Variables or Indicator Variables in R
+
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+#
+CatHeight <- cut(Height, 
+                 breaks = c(0, 50, 55, 60, 65, 70, 100), 
+                 labels = c("A", "B", "C", "D", "E", "F"),
+                 right = F)   
+CatHeight
+length(CatHeight)
+str(CatHeight)
+class(CatHeight)
+# calc Lung Capacity for each of the category of height
+mean(LungCap[CatHeight == "A"])
+mean(LungCap[CatHeight == "B"])
+mean(LungCap[CatHeight == "C"])
+mean(LungCap[CatHeight == "D"])
+mean(LungCap[CatHeight == "E"])
+mean(LungCap[CatHeight == "F"])
+
+mod <- lm(LungCap ~ CatHeight)
+summary(mod)
+```
+
+
+## 5.6 Change Reference (Baseline) Category in Regression Model with R
+
+```{r}
+help(relevel)
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+#
+mod1 <- lm(LungCap ~ Age + Smoke)
+summary(mod1)
+# you can check the order of the variables with table()
+table(Smoke)
+# relevel
+Smoke <- relevel(factor(Smoke), ref = "yes")
+# check that order changed
+table(Smoke)
+mod2 <- lm(LungCap ~ Age + Smoke)
+summary(mod2)
+```
+
+
+## 5.7 Including Variables/ Factors in Regression with R, Part I: How to include a categorical variable in a regression model and interpret the model coefficient R
+
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+#
+class(Smoke)
+levels(Smoke)
+# fit a Reg Model
+model1 <- lm(LungCap ~ Age + Smoke)
+# ask for a summary of the model
+summary(model1)
+model1$coefficients["(Intercept)"]
+coef(model1)["(Intercept)"]
+# plot smoker NO
+plot(
+  x = Age[Smoke == "no"],
+  y = LungCap[Smoke == "no"],
+  col = "blue",
+  ylim = c(0,15),
+  xlab = "Age",
+  ylab = "LungCap",
+  main = "LungCap vs. Age, Smoke no"
+)
+
+# points smoker YES
+points(
+  x = Age[Smoke == "yes"],
+  y = LungCap[Smoke == "yes"],
+  col = "red",
+  pch = 16
+)
+
+# add legend
+legend(
+  x = 3,
+  y = 15,
+  legend = c("NonSmoker", "Smoker"),
+  col = c("blue", "red"),
+  pch = c(1, 16),
+  bty = "n"
+)
+
+# add regression line for Non-Smokers
+abline(a = model1$coefficients["(Intercept)"], 
+       b = model1$coefficients["Age"], 
+       col = "blue", 
+       lwd = 3)
+
+# add regression line for Smokers; relevel factor Smoke to ref='yes'
+Smoke <- relevel(factor(Smoke), ref = "yes")
+model1 <- lm(LungCap ~ Age + Smoke)
+# ask for a summary of the model
+summary(model1)
+abline(a = model1$coefficients["(Intercept)"], 
+       b = model1$coefficients["Age"], 
+       col = "red", 
+       lwd = 3)
 
 ```
 
-## 5.3 Multiple Linear Regression 
+
+## 5.8 Including Variables/ Factors in Regression with R, Part II: How to include a categorical variable in a regression model and interpret the model coefficient with R
+
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+CatHeight <- cut(Height, 
+                 breaks = c(0, 50, 55, 60, 65, 70, 100), 
+                 labels = c("A", "B", "C", "D", "E", "F"),
+                 right = F)   
+model2 <- lm(LungCap ~ Age + CatHeight)
+summary(model2)
+
+# plot
+plot(
+  Age[CatHeight == "A"],
+  LungCap[CatHeight == "A"],
+  col = 2,
+  ylim = c(0, 15),
+  xlim = c(0, 20),
+  xlab = "Age",
+  ylab = "LungCap",
+  main = "lungCap vs Age and CatHeight"
+)
+# add points ... 
+points(Age[CatHeight == "B"], LungCap[CatHeight == "B"], col = 3)
+points(Age[CatHeight == "C"], LungCap[CatHeight == "C"], col = 4)
+points(Age[CatHeight == "D"], LungCap[CatHeight == "D"], col = 5)
+points(Age[CatHeight == "E"], LungCap[CatHeight == "E"], col = 6)
+points(Age[CatHeight == "F"], LungCap[CatHeight == "F"], col = 7)
+
+legend(0, 15.5, legend = c("A", "B", "C", "D", "E", "F"), col = 2:7, pch = 1, cex = 0.8)
+
+col_code <- 2
+
+# create abline for each category in factor CatHeight
+for (x in levels(CatHeight)) {
+  CatHeight <- relevel(CatHeight, ref = x)
+  model1 <- lm(LungCap ~ Age + CatHeight)
+  # inform user
+  message(paste0("CatHeight level: ", x, "\n", 
+                 "Intercept: ", round(model1$coefficients["(Intercept)"], 2), "\n",
+                 "Slope: ", round(model1$coefficients["Age"], 2), "\n",
+                 "Color code: ", col_code, "\n"))
+  abline(
+    a = model1$coefficients["(Intercept)"],
+    b = model1$coefficients["Age"],
+    col = col_code,
+    lwd = 3
+  )
+  col_code <- col_code + 1
+}
+```
+
+
+## 5.9 Multiple Linear Regression with Interaction in R: How to include interaction or effect modification in a regression model in R
+
+Analysis of interaction between smoking and age:
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+
+plot(
+  Age[Smoke == "no"],
+  LungCap[Smoke == "no"],
+  col = "blue",
+  ylim = c(0, 15),
+  xlim = c(0, 20),
+  xlab = "Age",
+  ylab = "LungCap",
+  main = "LungCap vs. Age, Smoke"
+)
+
+# points smoker YES
+points(
+  x = Age[Smoke == "yes"],
+  y = LungCap[Smoke == "yes"],
+  col = "red",
+  pch = 16
+)
+
+# add legend
+legend(
+  x = 1,
+  y = 15,
+  legend = c("NonSmoker", "Smoker"),
+  col = c("blue", "red"),
+  pch = c(1, 16),
+  bty = "n"
+)
+
+model1 <- lm(LungCap ~ Age*Smoke)
+coef(model1)
+# the same; but with more explicit notation:
+model1 <- lm(LungCap ~ Age + Smoke + Age:Smoke)
+coef(model1)
+summary(model1)
+model1$coefficients
+
+# add line for non-smokers
+abline(
+  a = model1$coefficients["(Intercept)"],
+  b = model1$coefficients["Age"],
+  col = "blue",
+  lwd = 3
+)
+
+# add line for smokers
+abline(
+  a = model1$coefficients["(Intercept)"] +
+    model1$coefficients["Smokeyes"],
+  b = model1$coefficients["Age"] + model1$coefficients["Age:Smokeyes"],
+  col = "red",
+  lwd = 3
+)
+```
+Should we include the interaction in our model?
+1. Does this interaction make sense conceptually? Or, should the effect of smoking depend on Age?
+2. Is the interaction term statistically significant? I.e. whether or not we believe the slopes of the regression lines are significantly different.
+
+=> the p-value of the interaction term, 0.377 is **NOT** statistically significant. 
+
+In order to include the interaction in our model: 
+1. The interaction should make sense conceptually AND
+2. The interaction term should be statistically significant.
+
+Should we include the interaction in our model?
+1. This interaction does NOT make sense conceptually AND 
+2. The interaction term is NOT statistically significant.
+Therefore we should not include the interaction term in our model. 
+
+```{r}
+model2 <- lm(LungCap ~ Age + Smoke)
+summary(model2)
+```
+
+
+## 5.10 Interpreting Interaction in Linear Regression with R: How to interpret interaction or effect modification in a linear regression model, between two factors with example in R
+
+Example:
+- Outcome/Dependent Variable (Y): Length of stay in the hospital (days)
+- Explanatory/Independent Variable (X): Smokes (yes/no)
+- Explanatory/Independent Variable (X): Asbestos Exposure (yes/no)
+
+Watch video!
+
+
+## 5.11 Partial F-Test for Variable Selection in Linear Regression with R: How to use Partial F-test to compare nested models for regression modelling in R
+
+The partial F-test is used in model building and variable selection to help decide if a variable or term can be removed from a model without making the model significantly worse. We can also think of the test as helping us decide if adding a variable or term to the model makes it significantly better.  
+
+The larger model = **Full Model**  
+The model with one or more variables/terms removed = **Reduced Model**  
+
+Partial F-test is used to compare **Nested** models.
+
+Estimate the mean Lung Capacity using Age, Gender, Smoke and Height.
+Consider removing Height.
+Questions to answer:  
+1. Does it result in a statistically significant increase in the sum of the squared errors a.k.a. residual sum of squares?
+2. Does it result in increased error in the model and hence a decrease in the predictive power of the model?
+
+```{r}
+LungCapData <- read.csv(file = "data/LungCapData.csv")
+attach(LungCapData)
+
+# Fit the FULL model
+Full.Model <- lm(LungCap ~ Age + I(Age^2))
+# Fit the REDUCED model
+Reduced.Model <- lm(LungCap ~ Age)
+
+summary(Full.Model)
+summary(Reduced.Model)
+```
+
+Carry out partial F-test:
+Null Hypothesis: models do not significantly differ.  
+Alternative Hypothesis: Full model is significantly better.  
+
+```{r}
+anova(Reduced.Model, Full.Model)
+```
+Based on the p-value of 0.172 we fail to reject the Null Hypothesis; we do not have evidence to believe that the full model is significantly better. 
+
+Now check for the Height variable.
+```{r}
+# Fit the FULL model
+model1 <- lm(LungCap ~ Age + Gender + Smoke + Height)
+# Fit the REDUCED model
+model2 <- lm(LungCap ~ Age + Gender + Smoke)
+
+summary(model1)
+summary(model2)
+anova(model2, model1)
+```
+P-value is extremely low, we can reject the Null Hypothesis, the Full Model seems to be significantly better. Also visible on the Residual Sum of Squares. 
+
+## 5.12 Polynomial Regression in R: How to fit polynomial regression model and assess polynomial regression models using the partial F-test with R
+
 ```{r}
 
 ```
-
-## 5.4 
 
